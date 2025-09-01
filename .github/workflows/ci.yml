@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    services:
+      localstack:
+        image: localstack/localstack:1.4
+        ports:
+          - 4566:4566
+        env:
+          SERVICES: s3,sqs,dynamodb
+          DEBUG: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -U pip
+          pip install -r requirements.txt
+      - name: Lint
+        run: |
+          . .venv/bin/activate
+          ruff check .
+          black --check .
+          mypy .
+      - name: Prepare LocalStack resources
+        env:
+          DYNAMO_TABLE: my-catalog-table
+          S3_BUCKET: catalog-bucket
+          SQS_CATALOG_TOPIC: catalog-emit.fifo
+        run: |
+          chmod +x scripts/start_localstack.sh
+          ./scripts/start_localstack.sh
+      - name: Tests
+        env:
+          AWS_ENDPOINT_URL: http://localhost:4566
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_REGION: us-east-1
+          DYNAMO_TABLE: my-catalog-table
+          S3_BUCKET: catalog-bucket
+          SQS_CATALOG_TOPIC: catalog-emit.fifo
+        run: |
+          . .venv/bin/activate
+          pytest -q
