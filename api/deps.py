@@ -31,7 +31,7 @@ def get_settings() -> Settings:
 bearer_scheme = HTTPBearer(auto_error=False)
 
 def get_current_owner(
-        creds: HTTPAuthorizationCredentials = Security(bearer_scheme),
+        creds: HTTPAuthorizationCredentials = Depends(bearer_scheme),
         settings: Settings = Depends(get_settings)
 ) -> str:
     """
@@ -43,7 +43,7 @@ def get_current_owner(
     
     token = creds.credentials
     try:
-        payload = jwt.decode(token, settings.jwt_secrets, algorithms=[settings.jwt_alq])
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_alg])
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
     
@@ -74,7 +74,7 @@ def get_aws_clients(settings: Settings = Depends(get_settings)) -> Dict[str, Any
             endpoint_url=settings.aws_endpoint_url,
             region=settings.aws_region,
             aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-            aws_secrets_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
         )
         _aws_clients = {
             "settings": settings,

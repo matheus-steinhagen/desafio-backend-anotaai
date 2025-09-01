@@ -62,6 +62,7 @@ def get_product(dynamo_resource, table_name: str, owner_id: str, product_id: str
     except ClientError as e:
         log.exception("DynamoDB get_item error")
         raise
+
     item = resp.get("Item")
     return item
 
@@ -86,7 +87,7 @@ def update_product(
     expr_attr_vals = {}
     expr_attr_names = {}
 
-    for i, (k, v) in enumerate(updates.item()):
+    for i, (k, v) in enumerate(updates.items()):
         # mapear nomes dos campos que estão vindo para os nomes dos atributos do DB (armazena-se title, description, price e category_id)
         attr_name = k
         placeholder = f":v{i}"
@@ -100,6 +101,7 @@ def update_product(
     expr_attr_vals[":v_version"] = 1
 
     from datetime import datetime
+
     expr_parts.append("updated_at = :updated_at")
     expr_attr_vals[":updated_at"] = datetime.utcnow().isoformat()
 
@@ -109,7 +111,7 @@ def update_product(
     expr_attr_vals[":expected_version"] = int(expected_version)
 
     try:
-        resp = t.update_items(
+        resp = t.update_item(
             Key={"ownerId": owner_id, "sk": sk},
             UpdateExpression=update_expression,
             ConditionExpression=condition_expression,
@@ -120,7 +122,6 @@ def update_product(
     except ClientError as e:
         code = e.response.get("Error", {}).get("Code")
         log.exception("DynamoDB update_item failed: %s", code)
-        
         if code in ("ConditionalCheckFailException",):
             raise ConditionalCheckFailedError(str(e))
         raise
@@ -135,7 +136,6 @@ def delete_product(dynamo_resource, table_name: str, owner_id: str, product_id: 
     t = _table(dynamo_resource, table_name)
     sk = f"PRODUCT#{product_id}"
     try:
-        # try conditional delete to ensure item exists
         t.delete_item(
             Key={"ownerId": owner_id, "sk": sk},
             ConditionExpression="attribute_exists(ownerId) AND attribute_exists(sk)",

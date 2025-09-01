@@ -8,10 +8,9 @@ Usa `MessageGroupoId` = `owner_id` e `MessageDeduplicationId` = `sha256(owner+en
 """
 
 from __future__ import annotations
-import logging
+import logging, time, json, hashlib, math
 from typing import Any, Dict
 from botocore.exceptions import ClientError
-import time, json, hashlib, math
 
 log = logging.getLogger(__name__)
 
@@ -56,7 +55,6 @@ def send_catalog_event(
 
     dedup_id = _dedupe_id(owner_id, entity_id, ts)
     group_id = owner_id
-
     message_body = json.dumps(body)
 
     attempt = 0
@@ -65,8 +63,8 @@ def send_catalog_event(
             resp = sqs_client.send_message(
             QueueUrl=queue_url,
             MessageBody=message_body,
-            MessageGroup=group_id,
-            MessageDeduplicationId=dedup_id
+            MessageGroupId=group_id,
+            MessageDeduplicationId=dedup_id,
             )
             log.debug("SQS mensagem enviada owner=%s event=%s msgid=%s", owner_id, event_type, resp.get("MessageId"))
             return resp

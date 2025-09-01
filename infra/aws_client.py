@@ -8,9 +8,8 @@ Retorna
 """
 
 from __future__ import annotations
-import boto3
 from typing import Optional
-import logging
+import boto3, logging, os
 
 log = logging.getLogger(__name__)
 
